@@ -14,6 +14,7 @@ from main import get_random_book_from_file, book_search, make_message_book
 # Start Message
 @dp.message_handler(commands=['start'])
 async def process_start_command(message: types.Message):
+    await message.answer_chat_action('choose_sticker')
     if not BotDB.user_exist(message.from_user.id):
         BotDB.add_user(message.from_user.id, message.from_user.first_name)
     await message.answer(f"Hello, {message.from_user.get_mention(as_html=True)} 👋!",
@@ -74,7 +75,7 @@ async def cancel_handler(message: types.Message, state: FSMContext):
 # Book Search by Name
 @dp.message_handler(state=Form.book)
 async def answer_bot(message: types.Message, state: FSMContext):
-    await message.answer('Wait...')
+    await message.answer_chat_action('typing')
     title_text = message.text
     result = book_search(title_text, message.message_id, message.chat.id)
     mas = []
@@ -114,8 +115,9 @@ async def process_mybooks_command(message: types.Message):
 # Cats Command Handler
 @dp.message_handler(commands=['cats'])
 async def process_cats_command(message: types.Message):
-    caption = 'Вредина. 🖤 ♥'
+    caption = 'Вредина. 🖤'
     random_path = random.choice(cats)
+    await message.answer_chat_action('choose_sticker')
     with open(random_path, "rb") as file:
         await bot.send_photo(message.from_user.id, file.read(),
                              caption=caption,

@@ -39,7 +39,7 @@ async def get_description_search(call: types.CallbackQuery):
 # Book Download
 @dp.callback_query_handler(text=['download', 'top download'])
 async def download_book(call: types.CallbackQuery):
-    await call.message.answer('Searching...')
+    await call.message.answer_chat_action('upload_document')
     if call.data.startswith('top'):
         k = call.message.caption.split('\n')
         z = k[1].split(':')
@@ -114,7 +114,7 @@ async def get_search_book(call: types.CallbackQuery):
 # Get Book
 @dp.callback_query_handler()
 async def get_search_book(call: types.CallbackQuery):
-    await call.message.answer('Searching...')
+    await call.message.answer_chat_action('typing')
     if call.data.startswith('wishbook'):
         k = call.data.split(' ')
         page = change_page('=', call.message.message_id, call.message.chat.id, True)
