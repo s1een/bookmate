@@ -6,19 +6,16 @@ import requests
 from bs4 import BeautifulSoup
 from create_bot import BotDB
 
-book_urls = []
-books = []
-
 headers = {
     'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36'
 }
 
 
-# Utils
+# Random Book
 def get_random_book_from_file():
     random_book = random.randint(0, 98)
-    with open('top_books.json') as f:
+    with open('json/top_books.json') as f:
         data = json.loads(f.read())
     book_id = data[random_book]['id']
     title = data[random_book]['title']
@@ -33,37 +30,60 @@ def get_random_book_from_file():
 
 
 def get_dsc(count):
-    with open('top_books.json') as f:
+    with open('json/top_books.json') as f:
         data = json.loads(f.read())
     description = data[count]['description']
     return description
 
 
-def book_to_json(book_id, author, title, genre, dsc, stars, img, buy_link, buy_link2):
-    to_json = {'id': book_id, 'title': title, 'author': author, 'genre': genre, 'description': dsc, 'stars': stars,
-               'image': img, 'buy_link_1': buy_link, 'buy_link_2': buy_link2}
-    books.append(to_json)
-    print(f'Book {title} saved.')
+# Book Series
+def get_series_from_file(message_id, empty_array):
+    try:
+        util_id = BotDB.get_util_id(message_id)
+    except TypeError:
+        BotDB.add_util_data(message_id)
+    page_number = BotDB.get_page_number(message_id)
+    temp = 10
+    result = ''
+    if page_number == 2:
+        temp = 5
+    empty_array.append(temp)
+    with open('json/all_series.json') as f:
+        data = json.loads(f.read())
+        for i in range(0, temp):
+            result += f'{i + 1}. {data[i + page_number * 10]["name"]}\n'
+    return result
 
 
-# Parser
-def get_urls():
-    url = 'https://readrate.com/rus/ratings/top100?iid=8107&offset=all'
-    response = requests.get(url=url, headers=headers)
-    if response.status_code == 200:
-        soup = BeautifulSoup(response.text, "lxml")
-        books_items = soup.find_all('div', class_='col-12 col-sm ml-sm-5')
-        for bi in books_items:
-            book_url = bi.find('a', class_='title-link d-inline-block').get('href')
-            book_urls.append(f'https://readrate.com/{book_url}')
-        get_top_books()
-    else:
-        logging.error(f'Status Code: {response.status_code}')
+def get_series_info(count, message_id, chat_id, empty_array):
+    page_number = BotDB.get_page_number(message_id)
+    with open('json/all_series.json') as f:
+        data = json.loads(f.read())
+        number = data[count + page_number * 10]['index']
+        query = requests.get(url=data[count + page_number * 10]['link'], headers=headers)
+        if query.status_code == 200:
+            result = query.content
+            soup = BeautifulSoup(result, 'html.parser')
+            series_list = soup.find_all('div', class_='book-group-books')
+            series_books = series_list[number].find_all('div', class_='book item')
+            BotDB.update_util_data(message_id, 0)
+            util_id = BotDB.get_util_id(message_id)
+            empty_array.append(util_id)
+            for j in range(0, len(series_books)):
+                tmp = series_books[j].find('a', class_='title-link d-inline-block mt-2')
+                book_links_temp = f'https://readrate.com{tmp.get("href")}'
+                book_titles_temp = tmp.get_text()
+                book_authors_temp = series_books[j].find('a', class_='text-gray font-size-sm').get_text()
+                BotDB.add_book_data(message_id, chat_id, util_id, book_titles_temp, book_authors_temp, book_links_temp)
+            return True
+        else:
+            return False
 
 
+# Book Download
 def get_book_fl(title):
     url = f'https://flibusta.site/booksearch?ask={title}'
-    query = requests.get(url)
+    query = requests.get(url=url, headers=headers)
     if query.status_code == 200:
         result = query.content
         soup = BeautifulSoup(result, 'html.parser')
@@ -81,7 +101,7 @@ def get_book_fl(title):
         if link == '#':
             return 'Error'
         download_link = f'https://flibusta.site/{link}/fb2'
-        query = requests.get(download_link)
+        query = requests.get(url=download_link, headers=headers)
         file_path = 'user_book/book.fb2'
         with open(file_path, 'wb') as f:
             f.write(query.content)
@@ -91,41 +111,61 @@ def get_book_fl(title):
         return 'Error'
 
 
-def get_top_books():
-    for book_url in book_urls:
-        query = requests.get(book_url)
-        if query.status_code == 200:
-            result = query.content
-            soup = BeautifulSoup(result, 'html.parser')
-            title = soup.find('h1', class_='book-title').get_text()
-            author = soup.find('li', class_='contributor item text-wrap list-inline-item').get_text()
-            images = soup.find_all('img', src=True)
-            img = "{}{}".format('https://readrate.com/', images[3].get('data-src'))
-            try:
-                genre = soup.find('a', class_='link d-block font-size-sm').get_text()
-                buy_link = soup.find('a', class_='btn btn-pb btn-primary px-4').get('href')
-                buy_link2 = soup.find('div', id='paper').find('a').get('href')
-            except AttributeError:
-                if genre is None:
-                    genre = 'Bible'
-                buy_link2 = 'https://www.litres.ru'
-            # refactor
-            dsc = soup.find('div', class_='more-less').find_all('div', class_='entity').pop().get_text().strip()
-            # refactor
-            stars = soup.find('ul', class_='stars-list list-unstyled list-inline align-middle d-inline-block') \
-                .find_all('li', class_='list-inline-item star active')
-            index = book_urls.index(book_url)
-            book_to_json(index, author, title, genre, dsc, len(stars), img, buy_link, buy_link2)
-        else:
-            logging.warning(f'Status Code: {query.status_code}')
-            continue
-    with open('top_books.json', 'w') as f:
-        json.dump(books, f, indent=2)
+# Author Search
+def author_search(name, message_id, chat_id):
+    url = f'https://readrate.com/rus/search/authors?q={name}'
+    query = requests.get(url=url, headers=headers)
+    if query.status_code == 200:
+        result = query.content
+        soup = BeautifulSoup(result, 'html.parser')
+        authors = soup.find_all('div', class_='item ml-3 ml-md-4')
+        count = 10
+        if len(authors) < 10:
+            count = len(authors)
+        BotDB.add_util_data(message_id)
+        util_id = BotDB.get_util_id(message_id)
+        for i in range(0, count):
+            tmp = authors[i].find('a', class_='d-block text-yellow text-decoration-underline')
+            author_link = f'https://readrate.com/{tmp.get("href")}'
+            author_name = authors[i].find('a', class_='d-block text-yellow text-decoration-underline').get_text()
+            books_count = authors[i].find('div', class_='text-gray font-size-xs mt-1 mb-2').get_text().strip()
+            temp = books_count.split(' ')
+            if int(temp[0]) > 20:
+                books_count = f'{20} книг'
+            BotDB.add_author_data(chat_id, util_id, author_name, books_count, author_link)
+        return True
+    else:
+        logging.warning(f'Status Code: {query.status_code}')
+        return False
 
 
+def get_author_book(n, message_id, chat_id, empty_array):
+    util_id = BotDB.get_util_id(message_id)
+    name = BotDB.get_author_data(chat_id, util_id)
+    author_link = BotDB.get_author_link(chat_id, util_id, name[n - 1][0])
+    query = requests.get(url=author_link, headers=headers)
+    if query.status_code == 200:
+        result = query.content
+        soup = BeautifulSoup(result, 'html.parser')
+        author_books = soup.find_all('div', class_='book item')
+        BotDB.add_util_data(message_id)
+        util_id = BotDB.get_util_id(message_id)
+        empty_array.append(util_id)
+        for j in range(0, len(author_books)):
+            tmp = author_books[j].find('a', class_='title-link d-inline-block my-2')
+            book_links_temp = f'https://readrate.com/{tmp.get("href")}'
+            book_titles_temp = tmp.get_text()
+            book_authors_temp = name[n - 1][0]
+            BotDB.add_book_data(message_id, chat_id, util_id, book_titles_temp, book_authors_temp, book_links_temp)
+        return True
+    else:
+        return False
+
+
+# Title Search
 def book_search(title, message_id, chat_id):
     url = f'https://readrate.com/rus/search/books?q={title}'
-    query = requests.get(url)
+    query = requests.get(url=url, headers=headers)
     BotDB.add_util_data(message_id)
     book_authors_temp = ''
     book_titles_temp = ''
@@ -148,7 +188,7 @@ def book_search(title, message_id, chat_id):
             q += 1
         for i in range(0, q):
             url = f'https://readrate.com/rus/search/books?q={title}&offset={i * 10}'
-            query = requests.get(url)
+            query = requests.get(url=url, headers=headers)
             if query.status_code != 200:
                 break
             result = query.content
@@ -167,6 +207,20 @@ def book_search(title, message_id, chat_id):
                     book_authors_temp = 'None'
                 BotDB.add_book_data(message_id, chat_id, util_id, book_titles_temp, book_authors_temp, book_links_temp)
         return True
+    else:
+        logging.warning(f'Status Code: {query.status_code}')
+        return False
+
+
+# Make List Message
+def make_message_authors(empty_array, message_id, chat_id):
+    util_id = BotDB.get_util_id(message_id)
+    author_data = BotDB.get_author_data(chat_id, util_id)
+    empty_array.append(len(author_data))
+    result = ''
+    for author in author_data:
+        result += f'{author_data.index(author) + 1}. {author[0]} - {author[1]}\n'
+    return result
 
 
 def make_message_book(empty_array, message_id, chat_id, config):
@@ -196,6 +250,7 @@ def make_message_book(empty_array, message_id, chat_id, config):
     return result
 
 
+# Make book message
 def get_one_book(url_book, message_id, chat_id, config):
     book_to_string = []
     if config:
@@ -208,7 +263,7 @@ def get_one_book(url_book, message_id, chat_id, config):
         book_ids = BotDB.get_book_id(util_id, chat_id)
         book_id = book_ids[url_book][0]
     book_url = book_links[url_book][0]
-    query = requests.get(book_url)
+    query = requests.get(url=book_url, headers=headers)
     if query.status_code == 200:
         result = query.content
         soup = BeautifulSoup(result, 'html.parser')
@@ -251,15 +306,21 @@ def get_one_book(url_book, message_id, chat_id, config):
         return 'Error'
 
 
-def change_page(config, message_id, chat_id, wish):
+# Change page
+def change_page(config, message_id, chat_id, search_type):
     page_number = BotDB.get_page_number(message_id)
     util_id = BotDB.get_util_id(message_id)
-    if wish:
+    if search_type == 'wish':
         book_titles = BotDB.get_wish_title2(chat_id, util_id)
     else:
         book_titles = BotDB.get_book_title_data(util_id, chat_id)
+    if search_type == 'series':
+        elements_count = 25
+    else:
+        elements_count = len(book_titles)
     if config == '+':
-        if len(book_titles) // 10 > page_number:
+        if elements_count // 10 > page_number and not (
+                elements_count % 10 == 0 and elements_count // 10 == page_number + 1):
             page_number += 1
             BotDB.update_util_data(message_id, page_number)
     elif config == '-':

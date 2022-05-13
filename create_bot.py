@@ -15,10 +15,10 @@ cats = ['img/cat.png', 'img/cat2.png', 'img/cat3.png', 'img/cat4.png', 'img/cat5
 
 # Utils
 class Form(StatesGroup):
+    choice = State()
     book = State()
-    # Dev
-    # author = State()
-    # series = State()
+    author = State()
+    series = State()
 
 
 if not TOKEN:
@@ -32,4 +32,4 @@ BotDB = BotDB('data_base/book_mate.db')
 # Включаем логирование, чтобы не пропустить важные сообщения
 # filename='logs/bot_log.log'
 logging.basicConfig(format=u'%(filename)s [ LINE:%(lineno)+3s ]#%(levelname)+8s [%(asctime)s]  %(message)s',
-    level=logging.INFO)
+                    level=logging.INFO)
