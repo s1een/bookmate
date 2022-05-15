@@ -56,10 +56,15 @@ class BotDB:
                             (util_id, chat_id))
         return self.conn.commit()
 
-    def get_wish_book_id(self, util_id, chat_id):
-        result = self.cursor.execute("SELECT `id` FROM `user_wishlist` WHERE `util_id` = ? AND `chat_id` = ?",
-                                     (util_id, chat_id))
-        return result.fetchone()[0]
+    def get_wish_book_id(self, chat_id):
+        result = self.cursor.execute("SELECT `id` FROM `user_wishlist` WHERE `chat_id` = ?",
+                                     (chat_id,))
+        return result.fetchall()
+
+    def delete_wish(self, user_id, chat_id):
+        self.cursor.execute("DELETE FROM `user_wishlist` WHERE `id` = ? AND `chat_id` = ?",
+                            (user_id, chat_id))
+        return self.conn.commit()
 
     def add_book_to_wishlist(self, chat_id, book_title, book_author, book_link):
         self.cursor.execute(

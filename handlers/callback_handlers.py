@@ -64,7 +64,7 @@ async def download_book(call: types.CallbackQuery):
 
 
 # Next button
-@dp.callback_query_handler(text=['book next', 'wishlist next', 'series next'])
+@dp.callback_query_handler(text=['book next', 'wishlist next', 'series next', 'delete next'])
 async def get_search_book(call: types.CallbackQuery):
     mas = []
     if call.data.startswith('wishlist'):
@@ -87,6 +87,19 @@ async def get_search_book(call: types.CallbackQuery):
                                         reply_markup=create_inline(mas[0], 'series'))
         except MessageNotModified:
             await call.answer('Its last page. 😔')
+    elif call.data.startswith('delete'):
+        try:
+            change_page('+', call.message.message_id, call.message.chat.id, 'wish')
+            try:
+                await bot.edit_message_text(
+                    make_message_book(mas, call.message.message_id, call.message.chat.id, True).strip(),
+                    call.message.chat.id,
+                    call.message.message_id,
+                    reply_markup=create_inline(mas[0], 'delete'))
+            except MessageNotModified:
+                await call.answer('Its last page. 😔')
+        except MessageNotModified:
+            await call.answer('Its first page. 😔')
     else:
         change_page('+', call.message.message_id, call.message.chat.id, 'book')
         try:
@@ -100,7 +113,7 @@ async def get_search_book(call: types.CallbackQuery):
 
 
 # Back Button
-@dp.callback_query_handler(text=['book back', 'wishlist back', 'series back'])
+@dp.callback_query_handler(text=['book back', 'wishlist back', 'series back', 'delete back'])
 async def get_search_book(call: types.CallbackQuery):
     mas = []
     if call.data.startswith('wishlist'):
@@ -121,6 +134,16 @@ async def get_search_book(call: types.CallbackQuery):
             await bot.edit_message_text(result, call.message.chat.id,
                                         call.message.message_id,
                                         reply_markup=create_inline(mas[0], 'series'))
+        except MessageNotModified:
+            await call.answer('Its first page. 😔')
+    elif call.data.startswith('delete'):
+        change_page('-', call.message.message_id, call.message.chat.id, 'wish')
+        try:
+            await bot.edit_message_text(
+                make_message_book(mas, call.message.message_id, call.message.chat.id, True).strip(),
+                call.message.chat.id,
+                call.message.message_id,
+                reply_markup=create_inline(mas[0], 'delete'))
         except MessageNotModified:
             await call.answer('Its first page. 😔')
     else:
@@ -157,6 +180,23 @@ async def get_search_book(call: types.CallbackQuery, state: FSMContext):
             BotDB.add_book_help(temp.chat.id, temp.message_id, book[7], book[5], book[6], book[8])
         else:
             await call.answer('Page not available. 😔')
+    elif call.data.startswith('delete'):
+        k = call.data.split(' ')
+        page = change_page('=', call.message.message_id, call.message.chat.id, True)
+        p = int(k[1]) - 1 + page * 10
+        book_ids = BotDB.get_wish_book_id(call.message.chat.id)
+        BotDB.delete_wish(book_ids[p][0], call.message.chat.id)
+
+        mas = []
+        result = make_message_book(mas, call.message.message_id, call.message.chat.id, True)
+        if result != '':
+            bot_message = await bot.edit_message_text(result.strip(), call.message.chat.id,
+                                                      call.message.message_id,
+                                                      reply_markup=create_inline(mas[0], 'delete'))
+            util_id = BotDB.get_util_id(call.message.message_id)
+            BotDB.update_util_message_id(util_id, bot_message.message_id)
+        else:
+            await bot.edit_message_text('Your wish list is empty.', call.message.chat.id, call.message.message_id)
     elif call.data.startswith('author'):
         await call.message.answer_chat_action('typing')
         k = call.data.split(' ')

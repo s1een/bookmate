@@ -254,9 +254,9 @@ def make_message_book(empty_array, message_id, chat_id, config):
 def get_one_book(url_book, message_id, chat_id, config):
     book_to_string = []
     if config:
-        util_id = BotDB.get_util_id(message_id)
         book_links = BotDB.get_wish_link(chat_id)
-        book_id = BotDB.get_wish_book_id(util_id, chat_id)
+        book_ids = BotDB.get_wish_book_id(chat_id)
+        book_id = book_ids[url_book][0]
     else:
         util_id = BotDB.get_util_id(message_id)
         book_links = BotDB.get_book_link_data(util_id, chat_id)

@@ -69,6 +69,21 @@ async def process_mybooks_command(message: types.Message):
         await message.answer('Your wish list is empty.')
 
 
+# @dp.message_handler(commands=['mybooks'])
+@dp.message_handler(Text(equals="Remove book from wishlist"))
+async def process_mybooks_command(message: types.Message):
+    mas = []
+    result = make_message_book(mas, message.message_id, message.chat.id, True)
+    if result != '':
+        bot_message = await bot.send_message(message.chat.id,
+                                             result.strip(),
+                                             reply_markup=create_inline(mas[0], 'delete'))
+        util_id = BotDB.get_util_id(message.message_id)
+        BotDB.update_util_message_id(util_id, bot_message.message_id)
+    else:
+        await message.answer('Your wish list is empty.')
+
+
 # Book Search Start
 @dp.message_handler(commands=['search'])
 @dp.message_handler(Text(equals='Search'))
@@ -91,7 +106,7 @@ async def process_search_command(message: types.Message):
 
 # State Cancel
 @dp.message_handler(state='*', commands='cancel')
-@dp.message_handler(Text(equals=['Back to Menu', 'Wishlist', 'Random Book', 'Search'], ignore_case=True), state='*')
+@dp.message_handler(Text(equals=['Wishlist', 'Random Book', 'Search'], ignore_case=True), state='*')
 async def cancel_handler(message: types.Message, state: FSMContext):
     current_state = await state.get_state()
     if current_state is None:
