@@ -8,7 +8,7 @@ from aiogram.utils.markdown import text, bold, italic
 
 from create_bot import dp, bot, Form, cats, BotDB
 from ui.kayboard import *
-from main import *
+from parser import *
 
 
 # Start Message
@@ -41,16 +41,19 @@ async def process_help_command(message: types.Message):
 @dp.message_handler(commands=['rbook'])
 async def process_rbook_command(message: types.Message):
     book = get_random_book_from_file()
-    result = f'*№* _{book[0]}_ ' \
-             f'\n*Title:* _{book[1]}_ ' \
-             f'\n*Author:* _{book[2]}_ ' \
-             f'\n*Genre:* _{book[3]}_ ' \
-             f'\n*Stars:* _{book[4]}_ \n'
-    board = create_main_board(book[6], book[7], 'top')
-    await bot.send_photo(message.from_user.id, book[5],
-                         caption=result,
-                         parse_mode=types.ParseMode.MARKDOWN,
-                         reply_markup=board)
+    if book is not None:
+        result = f'*№* _{book[0]}_ ' \
+                 f'\n*Title:* _{book[1]}_ ' \
+                 f'\n*Author:* _{book[2]}_ ' \
+                 f'\n*Genre:* _{book[3]}_ ' \
+                 f'\n*Stars:* _{book[4]}_ \n'
+        board = create_main_board(book[6], book[7], 'top')
+        await bot.send_photo(message.from_user.id, book[5],
+                             caption=result,
+                             parse_mode=types.ParseMode.MARKDOWN,
+                             reply_markup=board)
+    else:
+        await message.answer('Error, please try later. 😔')
 
 
 # Get WishList
@@ -63,6 +66,21 @@ async def process_mybooks_command(message: types.Message):
         bot_message = await bot.send_message(message.chat.id,
                                              result.strip(),
                                              reply_markup=create_inline(mas[0], 'wishlist'))
+        util_id = BotDB.get_util_id(message.message_id)
+        BotDB.update_util_message_id(util_id, bot_message.message_id)
+    else:
+        await message.answer('Your wish list is empty.')
+
+
+# @dp.message_handler(commands=['mybooks'])
+@dp.message_handler(Text(equals="Remove book from wishlist"))
+async def process_mybooks_command(message: types.Message):
+    mas = []
+    result = make_message_book(mas, message.message_id, message.chat.id, True)
+    if result != '':
+        bot_message = await bot.send_message(message.chat.id,
+                                             result.strip(),
+                                             reply_markup=create_inline(mas[0], 'delete'))
         util_id = BotDB.get_util_id(message.message_id)
         BotDB.update_util_message_id(util_id, bot_message.message_id)
     else:
@@ -91,7 +109,7 @@ async def process_search_command(message: types.Message):
 
 # State Cancel
 @dp.message_handler(state='*', commands='cancel')
-@dp.message_handler(Text(equals=['Back to Menu', 'Wishlist', 'Random Book', 'Search'], ignore_case=True), state='*')
+@dp.message_handler(Text(equals=['Wishlist', 'Random Book', 'Search'], ignore_case=True), state='*')
 async def cancel_handler(message: types.Message, state: FSMContext):
     current_state = await state.get_state()
     if current_state is None:
@@ -139,8 +157,8 @@ async def answer_choice(message: types.Message, state: FSMContext):
         await Form.author.set()
         await message.answer('Enter book author to search..', reply_markup=main_keyboard())
     elif msg_text == 'Series':
-        await message.answer('search..', reply_markup=main_keyboard())
-        await answer_series(message)
+        await message.answer('Searching..', reply_markup=main_keyboard())
+        await answer_series(message, state)
 
 
 # Book Search by Name
@@ -181,14 +199,18 @@ async def answer_author(message: types.Message, state: FSMContext):
 
 # Book Search by Series
 @dp.message_handler(state=Form.series)
-async def answer_series(message: types.Message):
+async def answer_series(message: types.Message, state: FSMContext):
     await message.answer_chat_action('typing')
     mas = []
     result = get_series_from_file(message.message_id, mas)
-    util_id = BotDB.get_util_id(message.message_id)
-    bot_message = await bot.send_message(message.chat.id, result,
-                                         reply_markup=create_inline(mas[0], 'series'))
-    BotDB.update_util_message_id(util_id, bot_message.message_id)
+    if result is not None:
+        util_id = BotDB.get_util_id(message.message_id)
+        bot_message = await bot.send_message(message.chat.id, result,
+                                             reply_markup=create_inline(mas[0], 'series'))
+        BotDB.update_util_message_id(util_id, bot_message.message_id)
+        await state.finish()
+    else:
+        await message.answer('Error, please try later. 😔')
 
 
 # Delete Keyboard

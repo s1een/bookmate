@@ -3,7 +3,7 @@ import json
 import requests
 import logging
 from bs4 import BeautifulSoup
-from main import headers
+from parser import headers
 
 book_urls = []
 books = []

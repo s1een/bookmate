@@ -15,18 +15,21 @@ headers = {
 # Random Book
 def get_random_book_from_file():
     random_book = random.randint(0, 98)
-    with open('json/top_books.json') as f:
-        data = json.loads(f.read())
-    book_id = data[random_book]['id']
-    title = data[random_book]['title']
-    author = data[random_book]['author']
-    genre = data[random_book]['genre']
-    stars = data[random_book]['stars']
-    image = data[random_book]['image']
-    buy_link = data[random_book]['buy_link_1']
-    buy_link2 = data[random_book]['buy_link_2']
-    logging.info(f'Random Book Title: {title}')
-    return [book_id, title, author, genre, stars, image, buy_link, buy_link2]
+    try:
+        with open('json/top_books.json') as f:
+            data = json.loads(f.read())
+        book_id = data[random_book]['id']
+        title = data[random_book]['title']
+        author = data[random_book]['author']
+        genre = data[random_book]['genre']
+        stars = data[random_book]['stars']
+        image = data[random_book]['image']
+        buy_link = data[random_book]['buy_link_1']
+        buy_link2 = data[random_book]['buy_link_2']
+        logging.info(f'Random Book Title: {title}')
+        return [book_id, title, author, genre, stars, image, buy_link, buy_link2]
+    except FileNotFoundError:
+        return None
 
 
 def get_dsc(count):
@@ -48,11 +51,14 @@ def get_series_from_file(message_id, empty_array):
     if page_number == 2:
         temp = 5
     empty_array.append(temp)
-    with open('json/all_series.json') as f:
-        data = json.loads(f.read())
-        for i in range(0, temp):
-            result += f'{i + 1}. {data[i + page_number * 10]["name"]}\n'
-    return result
+    try:
+        with open('json/all_series.json') as f:
+            data = json.loads(f.read())
+            for i in range(0, temp):
+                result += f'{i + 1}. {data[i + page_number * 10]["name"]}\n'
+        return result
+    except FileNotFoundError:
+        return None
 
 
 def get_series_info(count, message_id, chat_id, empty_array):
@@ -73,7 +79,10 @@ def get_series_info(count, message_id, chat_id, empty_array):
                 tmp = series_books[j].find('a', class_='title-link d-inline-block mt-2')
                 book_links_temp = f'https://readrate.com{tmp.get("href")}'
                 book_titles_temp = tmp.get_text()
-                book_authors_temp = series_books[j].find('a', class_='text-gray font-size-sm').get_text()
+                try:
+                    book_authors_temp = series_books[j].find('a', class_='text-gray font-size-sm').get_text()
+                except AttributeError:
+                    book_authors_temp = 'None'
                 BotDB.add_book_data(message_id, chat_id, util_id, book_titles_temp, book_authors_temp, book_links_temp)
             return True
         else:
@@ -254,9 +263,9 @@ def make_message_book(empty_array, message_id, chat_id, config):
 def get_one_book(url_book, message_id, chat_id, config):
     book_to_string = []
     if config:
-        util_id = BotDB.get_util_id(message_id)
         book_links = BotDB.get_wish_link(chat_id)
-        book_id = BotDB.get_wish_book_id(util_id, chat_id)
+        book_ids = BotDB.get_wish_book_id(chat_id)
+        book_id = book_ids[url_book][0]
     else:
         util_id = BotDB.get_util_id(message_id)
         book_links = BotDB.get_book_link_data(util_id, chat_id)

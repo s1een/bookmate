@@ -6,7 +6,8 @@ def main_keyboard():
     button1 = KeyboardButton('Search')
     button2 = KeyboardButton('Random Book')
     button3 = KeyboardButton('Wishlist')
-    button4 = KeyboardButton('Back to Menu')
+    button4 = KeyboardButton('Remove book from wishlist')
+    # button4 = KeyboardButton('Back to Menu')
 
     markup = ReplyKeyboardMarkup(resize_keyboard=True).add(
         button1).insert(button2).add(button3).insert(button4)
@@ -23,7 +24,7 @@ def search_keyboard():
 
 
 # Inline
-def create_inline(count,status):
+def create_inline(count, status):
     kb = InlineKeyboardMarkup(row_width=5)
     if count > 0:
         book_button1 = InlineKeyboardButton('1', callback_data=f'{status} 1')
@@ -61,6 +62,7 @@ def create_inline(count,status):
     next_button = InlineKeyboardButton('->', callback_data=f'{status} next')
     kb.add(back_button).insert(next_button)
     return kb
+
 
 def create_main_board(first_store, second_store, config):
     inline_btn_store1 = InlineKeyboardButton('EBook', callback_data='store', url=first_store)
