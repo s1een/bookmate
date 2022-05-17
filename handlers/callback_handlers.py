@@ -152,6 +152,16 @@ async def change_page_back(call: types.CallbackQuery):
                 reply_markup=create_inline(mas[0], 'delete'))
         except MessageNotModified:
             await call.answer('Its first page. 😔')
+    elif call.data.startswith('delete'):
+        change_page('-', call.message.message_id, call.message.chat.id, 'wish')
+        try:
+            await bot.edit_message_text(
+                make_message_book(mas, call.message.message_id, call.message.chat.id, True).strip(),
+                call.message.chat.id,
+                call.message.message_id,
+                reply_markup=create_inline(mas[0], 'delete'))
+        except MessageNotModified:
+            await call.answer('Its first page. 😔')
     else:
         change_page('-', call.message.message_id, call.message.chat.id, 'book')
         try:
