@@ -32,10 +32,10 @@ def get_random_book_from_file():
         return None
 
 
-def get_dsc(count):
+def get_book_description(book_index):
     with open('json/top_books.json') as f:
         data = json.loads(f.read())
-    description = data[count]['description']
+    description = data[book_index]['description']
     return description
 
 
@@ -61,12 +61,12 @@ def get_series_from_file(message_id, empty_array):
         return None
 
 
-def get_series_info(count, message_id, chat_id, empty_array):
+def get_series_info(index, message_id, chat_id, empty_array):
     page_number = BotDB.get_page_number(message_id)
     with open('json/all_series.json') as f:
         data = json.loads(f.read())
-        number = data[count + page_number * 10]['index']
-        query = requests.get(url=data[count + page_number * 10]['link'], headers=headers)
+        number = data[index + page_number * 10]['index']
+        query = requests.get(url=data[index + page_number * 10]['link'], headers=headers)
         if query.status_code == 200:
             result = query.content
             soup = BeautifulSoup(result, 'html.parser')
@@ -173,6 +173,7 @@ def get_author_book(n, message_id, chat_id, empty_array):
 
 # Title Search
 def book_search(title, message_id, chat_id):
+    logging.info(f'Searching: {title}')
     url = f'https://readrate.com/rus/search/books?q={title}'
     query = requests.get(url=url, headers=headers)
     BotDB.add_util_data(message_id)

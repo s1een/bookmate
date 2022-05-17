@@ -36,8 +36,8 @@ async def get_description_search(call: types.CallbackQuery):
         await call.message.answer(book_description)
     else:
         k = call.message.caption.split(' ')
-        st = get_dsc(int(k[1]))
-        await call.message.answer(st.strip())
+        book_description = get_book_description(int(k[1]))
+        await call.message.answer(book_description.strip())
 
 
 # Book Download
@@ -65,7 +65,7 @@ async def download_book(call: types.CallbackQuery):
 
 # Next button
 @dp.callback_query_handler(text=['book next', 'wishlist next', 'series next', 'delete next'])
-async def get_search_book(call: types.CallbackQuery):
+async def change_page_next(call: types.CallbackQuery):
     mas = []
     if call.data.startswith('wishlist'):
         change_page('+', call.message.message_id, call.message.chat.id, 'wish')
@@ -117,7 +117,7 @@ async def get_search_book(call: types.CallbackQuery):
 
 # Back Button
 @dp.callback_query_handler(text=['book back', 'wishlist back', 'series back', 'delete back'])
-async def get_search_book(call: types.CallbackQuery):
+async def change_page_back(call: types.CallbackQuery):
     mas = []
     if call.data.startswith('wishlist'):
         change_page('-', call.message.message_id, call.message.chat.id, 'wish')
@@ -226,7 +226,7 @@ async def get_search_book(call: types.CallbackQuery, state: FSMContext):
         k = call.data.split(' ')
         count = []
         mas = []
-        result = get_series_info(int(k[1]) - 1, call.message.message_id, call.message.chat.id, count)
+        result = get_series_info(int(k[1]), call.message.message_id, call.message.chat.id, count)
         util_id = count[0]
         if result is True:
             await  bot.delete_message(call.message.chat.id, call.message.message_id)

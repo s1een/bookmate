@@ -27,12 +27,15 @@ async def process_help_command(message: types.Message):
     msg = text(bold('I can respond to the following commands:'),
                '/start - start interaction with the bot.',
                '/help - get user manual.',
+               '/search - search mode.',
+               '/choice - default search mode.',
+               '/book - title search mode.',
+               '/author - author search mode.',
+               '/series - series search mode.',
                '/rbook - random book.',
-               '/blist - get a directory.',
                '/mybooks - wishlist.',
-               '/dev - test command.',
-               '/cats - get cats.',
-               '/file - test command.', sep='\n')
+               '/rmybooks - delete from wishlist.',
+               '/cats - get cats.', sep='\n')
     await message.answer(msg, parse_mode=ParseMode.MARKDOWN)
 
 
@@ -72,9 +75,8 @@ async def process_mybooks_command(message: types.Message):
         await message.answer('Your wish list is empty.')
 
 
-# @dp.message_handler(commands=['mybooks'])
 @dp.message_handler(Text(equals="Remove book from wishlist"))
-async def process_mybooks_command(message: types.Message):
+async def process_rmybooks_command(message: types.Message):
     mas = []
     result = make_message_book(mas, message.message_id, message.chat.id, True)
     if result != '':
@@ -90,7 +92,7 @@ async def process_mybooks_command(message: types.Message):
 # Book Search Start
 @dp.message_handler(commands=['search'])
 @dp.message_handler(Text(equals='Search'))
-async def process_search_command(message: types.Message):
+async def process_search_command(message: types.Message, state: FSMContext):
     user_status = BotDB.get_user_status(message.chat.id)
     if user_status == 'choice':
         await Form.choice.set()
@@ -104,12 +106,12 @@ async def process_search_command(message: types.Message):
     elif user_status == 'series':
         await message.answer_chat_action('typing')
         await message.answer('Searching..', reply_markup=main_keyboard())
-        await answer_series(message)
+        await answer_series(message, state)
 
 
 # State Cancel
 @dp.message_handler(state='*', commands='cancel')
-@dp.message_handler(Text(equals=['Wishlist', 'Random Book', 'Search'], ignore_case=True), state='*')
+@dp.message_handler(Text(equals=['Wishlist', 'Random Book', 'Search','Remove book from wishlist'], ignore_case=True), state='*')
 async def cancel_handler(message: types.Message, state: FSMContext):
     current_state = await state.get_state()
     if current_state is None:
