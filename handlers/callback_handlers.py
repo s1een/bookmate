@@ -3,7 +3,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.utils.exceptions import MessageNotModified
 
 from create_bot import dp, bot
-from ui.kayboard import *
+from ui.keyboard import *
 from parser import *
 from create_bot import BotDB
 

@@ -7,7 +7,7 @@ from aiogram.types import ParseMode, ReplyKeyboardRemove, ContentType
 from aiogram.utils.markdown import text, bold, italic
 
 from create_bot import dp, bot, Form, cats, BotDB
-from ui.kayboard import *
+from ui.keyboard import *
 from parser import *
 
 
@@ -34,8 +34,7 @@ async def process_help_command(message: types.Message):
                '/series - series search mode.',
                '/rbook - random book.',
                '/mybooks - wishlist.',
-               '/rmybooks - delete from wishlist.',
-               '/cats - get cats.', sep='\n')
+               '/rmybooks - delete from wishlist.', sep='\n')
     await message.answer(msg, parse_mode=ParseMode.MARKDOWN)
 
 
