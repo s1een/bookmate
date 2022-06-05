@@ -187,8 +187,8 @@ async def answer_author(message: types.Message, state: FSMContext):
     msg_text = message.text
     result = author_search(msg_text, message.message_id, message.chat.id)
     mas = []
-    util_id = BotDB.get_util_id(message.message_id)
     if result is True:
+        util_id = BotDB.get_util_id(message.message_id)
         bot_message = await bot.send_message(message.chat.id,
                                              make_message_authors(mas, message.message_id, message.chat.id).strip(),
                                              reply_markup=create_inline(mas[0], 'author'))
@@ -238,11 +238,3 @@ async def unknown_message(message: types.Message):
     message_text = text("I don't know what to do with it :astonished:",
                         italic("\nI'll just remind you that there is a command /help"))
     await message.reply(message_text, parse_mode=ParseMode.MARKDOWN)
-
-
-def register_handlers_client(dp: Dispatcher):
-    dp.register_message_handler(process_start_command, commands=['start'])
-    dp.register_message_handler(process_help_command, commands=['help'])
-    dp.register_message_handler(process_rbook_command, commands=['rbook'])
-    dp.register_message_handler(process_search_command, commands=['search'])
-    dp.register_message_handler(process_cats_command, commands=['cats'])

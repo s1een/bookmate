@@ -127,6 +127,11 @@ def author_search(name, message_id, chat_id):
     if query.status_code == 200:
         result = query.content
         soup = BeautifulSoup(result, 'html.parser')
+        try:
+            count = int(soup.find('span', class_='current py-2 px-3 rounded d-inline-block').find('span').get_text())
+            logging.info(f'Number of books: {count}')
+        except:
+            return False
         authors = soup.find_all('div', class_='item ml-3 ml-md-4')
         count = 10
         if len(authors) < 10:
