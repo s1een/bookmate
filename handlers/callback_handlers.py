@@ -218,7 +218,11 @@ async def get_search_book(call: types.CallbackQuery, state: FSMContext):
         k = call.data.split(' ')
         count = []
         mas = []
-        result = get_author_book(int(k[1]), call.message.message_id, call.message.chat.id, count)
+        current_lang = BotDB.get_user_lang(call.message.chat.id)
+        if current_lang == 'ru':
+            result = get_author_book(int(k[1]), call.message.message_id, call.message.chat.id, count)
+        else:
+            result = get_author_book_ua(int(k[1]), call.message.message_id, call.message.chat.id, count)
         util_id = count[0]
         if result is True:
             await  bot.delete_message(call.message.chat.id, call.message.message_id)

@@ -188,10 +188,14 @@ async def answer_choice(message: types.Message, state: FSMContext):
 async def answer_book(message: types.Message, state: FSMContext):
     await message.answer_chat_action('typing')
     title_text = message.text
-    result = book_search(title_text, message.message_id, message.chat.id)
-    mas = []
-    util_id = BotDB.get_util_id(message.message_id)
+    current_lang = BotDB.get_user_lang(message.chat.id)
+    if current_lang == 'ru':
+        result = book_search(title_text, message.message_id, message.chat.id)
+    else:
+        result = book_search_ua(title_text, message.message_id, message.chat.id)
     if result is True:
+        mas = []
+        util_id = BotDB.get_util_id(message.message_id)
         bot_message = await bot.send_message(message.chat.id,
                                              make_message_book(mas, message.message_id, message.chat.id, False).strip(),
                                              reply_markup=create_inline(mas[0], 'book'))
@@ -206,7 +210,11 @@ async def answer_book(message: types.Message, state: FSMContext):
 async def answer_author(message: types.Message, state: FSMContext):
     await message.answer_chat_action('typing')
     msg_text = message.text
-    result = author_search(msg_text, message.message_id, message.chat.id)
+    current_lang = BotDB.get_user_lang(message.chat.id)
+    if current_lang == 'ru':
+        result = author_search(msg_text, message.message_id, message.chat.id)
+    else:
+        result = author_search_ua(msg_text, message.message_id, message.chat.id)
     if result is True:
         mas = []
         util_id = BotDB.get_util_id(message.message_id)

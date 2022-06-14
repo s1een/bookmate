@@ -5,11 +5,7 @@ import json
 import requests
 from bs4 import BeautifulSoup
 from create_bot import BotDB
-
-headers = {
-    'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36'
-}
+from utils import book_parse_ua, book_parse_ru, headers, del_bounds
 
 
 # Random Book
@@ -125,6 +121,41 @@ def get_book_fl(title):
         return 'Error'
 
 
+def author_search_ua(name, message_id, chat_id):
+    url = f'https://www.yakaboo.ua/ua/search/author/?q={name}'
+    query = requests.get(url=url, headers=headers)
+    if query.status_code == 200:
+        result = query.content
+        soup = BeautifulSoup(result, 'html.parser')
+        no_result = soup.find('div', class_='search-result no-result')
+        if no_result is not None:
+            return False
+        tmp = soup.find('div', class_='block-content').find('span', class_='amount').get_text()
+        authors_count = int(del_bounds(tmp))
+        count = 11
+        if authors_count < 11:
+            count = authors_count
+        if count == 1:
+            count = 2
+        BotDB.add_util_data(message_id)
+        util_id = BotDB.get_util_id(message_id)
+        author_info = soup.find_all('div', class_='caption')
+        for i in range(1, count):
+            author_link = author_info[i].find('a', class_='product-author').get('href')
+            author_name = author_info[i].find('a', class_='product-author').get_text()
+            tmp_count = author_info[i].find('div', class_='actions').find('span').get_text()
+            books_count = int(del_bounds(tmp_count))
+            if books_count > 20:
+                books_count = f'{20} книг'
+            else:
+                books_count = f'{books_count} книг'
+            BotDB.add_author_data(chat_id, util_id, author_name, books_count, author_link)
+        return True
+    else:
+        logging.warning(f'Status Code: {query.status_code}')
+        return False
+
+
 # Author Search
 def author_search(name, message_id, chat_id):
     url = f'https://readrate.com/rus/search/authors?q={name}'
@@ -178,6 +209,66 @@ def get_author_book(n, message_id, chat_id, empty_array):
             BotDB.add_book_data(message_id, chat_id, util_id, book_titles_temp, book_authors_temp, book_links_temp)
         return True
     else:
+        return False
+
+
+def get_author_book_ua(n, message_id, chat_id, empty_array):
+    util_id = BotDB.get_util_id(message_id)
+    name = BotDB.get_author_data(chat_id, util_id)
+    author_link = BotDB.get_author_link(chat_id, util_id, name[n - 1][0])
+    query = requests.get(url=author_link, headers=headers)
+    if query.status_code == 200:
+        result = query.content
+        soup = BeautifulSoup(result, 'html.parser')
+        author_books = soup.find_all('li', class_='item last')
+        BotDB.add_util_data(message_id)
+        util_id = BotDB.get_util_id(message_id)
+        empty_array.append(util_id)
+        for j in range(0, len(author_books)):
+            book_links_temp = author_books[j].find('a', class_='thumbnail product-image').get('href')
+            book_titles_temp = author_books[j].find('a', class_='product-name').find('div',
+                                                                                     class_='name').get_text().strip()
+            book_authors_temp = name[n - 1][0]
+            BotDB.add_book_data(message_id, chat_id, util_id, book_titles_temp, book_authors_temp, book_links_temp)
+        return True
+    else:
+        return False
+
+
+def book_search_ua(title, message_id, chat_id):
+    logging.info(f'Searching: {title}')
+    url = f'https://www.yakaboo.ua/ua/search?cat=4723&multi=0&q={title}'
+    query = requests.get(url=url, headers=headers)
+    BotDB.add_util_data(message_id)
+    book_authors_temp = ''
+    book_titles_temp = ''
+    book_links_temp = ''
+    util_id = BotDB.get_util_id(message_id)
+    if query.status_code == 200:
+        result = query.content
+        soup = BeautifulSoup(result, 'html.parser')
+        no_result = soup.find('div', class_='search-result no-result')
+        if no_result is not None:
+            return False
+        # page books count
+        items = soup.find_all('li', class_='item last')
+        count_page = len(items)
+        q = int(count_page / 10)
+        for i in range(0, q):
+            for j in range(0, 10):
+                if (i == q - 1):
+                    break
+                book_links_temp = items[j].find('a', class_='thumbnail product-image').get('href')
+                book_titles_temp = items[j].find('a', class_='product-name').find('div',
+                                                                                  class_='name').get_text().strip()
+                try:
+                    book_authors_temp = items[j].find('div', class_='product-author').get_text().strip()
+                except AttributeError:
+                    continue
+                BotDB.add_book_data(message_id, chat_id, util_id, book_titles_temp, book_authors_temp, book_links_temp)
+            return True
+    else:
+        logging.warning(f'Status Code: {query.status_code}')
         return False
 
 
@@ -287,38 +378,19 @@ def get_one_book(url_book, message_id, chat_id, config):
     if query.status_code == 200:
         result = query.content
         soup = BeautifulSoup(result, 'html.parser')
-        title = soup.find('h1', class_='book-title').get_text()
-        try:
-            author = soup.find('li', class_='contributor item text-wrap list-inline-item').get_text()
-        except AttributeError:
-            author = 'None'
-        images = soup.find_all('img', src=True)
-        img = "{}{}".format('https://readrate.com/', images[3].get('data-src'))
-        try:
-            genre = soup.find('a', class_='link d-block font-size-sm').get_text()
-        except AttributeError:
-            genre = 'None'
-        try:
-            buy_link = soup.find('a', class_='btn btn-pb btn-primary px-4').get('href')
-        except AttributeError:
-            buy_link = 'https://www.litres.ru'
-        try:
-            buy_link2 = soup.find('div', id='paper').find('a').get('href')
-        except AttributeError:
-            buy_link2 = 'https://www.litres.ru'
-        # refactor
-        dsc = soup.find('div', class_='more-less').find_all('div', class_='entity').pop().get_text().strip()
-        # refactor
-        stars = soup.find('ul', class_='stars-list list-unstyled list-inline align-middle d-inline-block') \
-            .find_all('li', class_='list-inline-item star active')
-        book_to_string.append(title)
-        book_to_string.append(author)
-        book_to_string.append(genre)
-        book_to_string.append(len(stars))
-        book_to_string.append(img)
-        book_to_string.append(buy_link)
-        book_to_string.append(buy_link2)
-        book_to_string.append(dsc)
+        current_lang = BotDB.get_user_lang(chat_id)
+        if current_lang == 'ru':
+            book = book_parse_ru(soup)
+        else:
+            book = book_parse_ua(soup, book_url)
+        book_to_string.append(book[0])
+        book_to_string.append(book[1])
+        book_to_string.append(book[2])
+        book_to_string.append(book[7])
+        book_to_string.append(book[5])
+        book_to_string.append(book[3])
+        book_to_string.append(book[4])
+        book_to_string.append(book[6])
         book_to_string.append(book_id)
         return book_to_string
     else:

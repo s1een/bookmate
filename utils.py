@@ -3,12 +3,16 @@ import json
 import requests
 import logging
 from bs4 import BeautifulSoup
-from parser import headers
 
 book_urls = []
 book_urls_ua = []
 books = []
 series = []
+
+headers = {
+    'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36'
+}
 
 
 # Parse top 100 books
@@ -46,25 +50,9 @@ def get_top_books(lang):
             if query.status_code == 200:
                 result = query.content
                 soup = BeautifulSoup(result, 'html.parser')
-                title = soup.find('h1', class_='book-title').get_text()
-                author = soup.find('li', class_='contributor item text-wrap list-inline-item').get_text()
-                images = soup.find_all('img', src=True)
-                img = "{}{}".format('https://readrate.com/', images[3].get('data-src'))
-                try:
-                    genre = soup.find('a', class_='link d-block font-size-sm').get_text()
-                    buy_link = soup.find('a', class_='btn btn-pb btn-primary px-4').get('href')
-                    buy_link2 = soup.find('div', id='paper').find('a').get('href')
-                except AttributeError:
-                    if genre is None:
-                        genre = 'Bible'
-                    buy_link2 = 'https://www.litres.ru'
-                # refactor
-                dsc = soup.find('div', class_='more-less').find_all('div', class_='entity').pop().get_text().strip()
-                # refactor
-                stars = soup.find('ul', class_='stars-list list-unstyled list-inline align-middle d-inline-block') \
-                    .find_all('li', class_='list-inline-item star active')
+                book = book_parse_ru(soup)
                 index = book_urls.index(book_url)
-                book_to_json(index, author, title, genre, dsc, len(stars), img, buy_link, buy_link2)
+                book_to_json(index, book[1], book[0], book[2], book[6], book[7], book[5], book[3], book[4])
             else:
                 logging.warning(f'Status Code: {query.status_code}')
                 continue
@@ -76,29 +64,9 @@ def get_top_books(lang):
             if query.status_code == 200:
                 result = query.content
                 soup = BeautifulSoup(result, 'html.parser')
-                title = soup.find('div', class_='tabs-title').find('span').get_text()
-                author = soup.find('table', class_='product-attributes__table').find('a').get_text()
-                genre = soup.find('ul', class_='breadcrumb').find_all('li')[2].find('span').get_text()
-                buy_link = book_url
-                buy_link2 = book_url
-                try:
-                    img = soup.find('div', class_='product-image product-image-zoom f-left').find('img', src=True).get(
-                        'src')
-                except AttributeError:
-                    img = soup.find('div', class_='product-img-box f-left').find('img', src=True).get('src')
-                # tmp2 = soup.find('div',class_='big-description block translate').find_all('p')[1].get_text()
-                # dsc = tmp + "\n" + tmp2
-                try:
-                    dsc = soup.find('div', itemprop="description").find('p').get_text()
-                except AttributeError:
-                    # dsc = soup.find('div', class_='big-description block').find('p').get_text()
-                    dsc = soup.find('div', itemprop="description").get_text()
-                try:
-                    stars = soup.find('span',class_='average').get_text()
-                except AttributeError:
-                    stars = 0
+                book = book_parse_ua(soup, book_url)
                 index = book_urls_ua.index(book_url)
-                book_to_json(index, author, title, genre, dsc, stars, img, buy_link, buy_link2)
+                book_to_json(index, book[1], book[0], book[2], book[6], book[7], book[5], book[3], book[4])
             else:
                 logging.warning(f'Status Code: {query.status_code}')
                 continue
@@ -111,6 +79,67 @@ def book_to_json(book_id, author, title, genre, dsc, stars, img, buy_link, buy_l
                'image': img, 'buy_link_1': buy_link, 'buy_link_2': buy_link2}
     books.append(to_json)
     print(f'Book {title} saved.')
+
+
+def del_bounds(string_to_fix):
+    temp = string_to_fix.replace('(', '')
+    result = temp.replace(')', '')
+    return result
+
+
+def book_parse_ru(soup):
+    title = soup.find('h1', class_='book-title').get_text()
+    try:
+        author = soup.find('li', class_='contributor item text-wrap list-inline-item').get_text()
+    except AttributeError:
+        author = 'None'
+    images = soup.find_all('img', src=True)
+    img = "{}{}".format('https://readrate.com/', images[3].get('data-src'))
+    try:
+        genre = soup.find('a', class_='link d-block font-size-sm').get_text()
+    except AttributeError:
+        genre = 'None'
+    try:
+        buy_link = soup.find('a', class_='btn btn-pb btn-primary px-4').get('href')
+    except AttributeError:
+        buy_link = 'https://www.litres.ru'
+    try:
+        buy_link2 = soup.find('div', id='paper').find('a').get('href')
+    except AttributeError:
+        buy_link2 = 'https://www.litres.ru'
+    # refactor
+    dsc = soup.find('div', class_='more-less').find_all('div', class_='entity').pop().get_text().strip()
+    # refactor
+    stars = soup.find('ul', class_='stars-list list-unstyled list-inline align-middle d-inline-block') \
+        .find_all('li', class_='list-inline-item star active')
+    empty = [title, author, genre, buy_link, buy_link2, img, dsc, len(stars)]
+    return empty
+
+
+def book_parse_ua(soup, book_url):
+    title = soup.find('div', class_='tabs-title').find('span').get_text()
+    author = soup.find('table', class_='product-attributes__table').find('a').get_text()
+    genre = soup.find('ul', class_='breadcrumb').find_all('li')[2].find('span').get_text()
+    buy_link = book_url
+    buy_link2 = book_url
+    try:
+        img = soup.find('div', class_='product-image product-image-zoom f-left').find('img', src=True).get(
+            'src')
+    except AttributeError:
+        img = soup.find('div', class_='product-img-box f-left').find('img', src=True).get('src')
+    # tmp2 = soup.find('div',class_='big-description block translate').find_all('p')[1].get_text()
+    # dsc = tmp + "\n" + tmp2
+    try:
+        dsc = soup.find('div', itemprop="description").find('p').get_text()
+    except AttributeError:
+        # dsc = soup.find('div', class_='big-description block').find('p').get_text()
+        dsc = soup.find('div', itemprop="description").get_text()
+    try:
+        stars = soup.find('span', class_='average').get_text()
+    except AttributeError:
+        stars = 0
+    empty = [title, author, genre, buy_link, buy_link2, img, dsc, stars]
+    return empty
 
 
 # Parse all series to Json
@@ -141,5 +170,5 @@ def series_to_json(name, link, index):
 
 
 if __name__ == '__main__':
-    get_urls('ua')
+    get_urls('ru')
     # get_series_urls()
