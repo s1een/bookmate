@@ -16,7 +16,7 @@ from parser import *
 async def process_start_command(message: types.Message):
     await message.answer_chat_action('choose_sticker')
     if not BotDB.user_exist(message.from_user.id):
-        BotDB.add_user(message.from_user.id, message.from_user.first_name, 'choice')
+        BotDB.add_user(message.from_user.id, message.from_user.first_name, 'choice', 'ru')
     await message.answer(f"Hello, {message.from_user.get_mention(as_html=True)} 👋!",
                          parse_mode=types.ParseMode.HTML, reply_markup=main_keyboard())
 
@@ -38,11 +38,31 @@ async def process_help_command(message: types.Message):
     await message.answer(msg, parse_mode=ParseMode.MARKDOWN)
 
 
+# lang commands
+@dp.message_handler(commands=['ua'])
+async def process_choice_command(message: types.Message):
+    BotDB.update_lang('ua', message.chat.id)
+    await message.delete()
+    await message.answer('Ua language set.')
+
+
+# lang commands
+@dp.message_handler(commands=['ru'])
+async def process_choice_command(message: types.Message):
+    BotDB.update_lang('ru', message.chat.id)
+    await message.delete()
+    await message.answer('Ru language set.')
+
+
 # Get a Random Book from Top 100
 @dp.message_handler(Text(equals='Random Book'))
 @dp.message_handler(commands=['rbook'])
 async def process_rbook_command(message: types.Message):
-    book = get_random_book_from_file()
+    current_lang = BotDB.get_user_lang(message.chat.id)
+    if current_lang == 'ru':
+        book = get_random_book_from_file('ru')
+    else:
+        book = get_random_book_from_file('ua')
     if book is not None:
         result = f'*№* _{book[0]}_ ' \
                  f'\n*Title:* _{book[1]}_ ' \
@@ -110,7 +130,8 @@ async def process_search_command(message: types.Message, state: FSMContext):
 
 # State Cancel
 @dp.message_handler(state='*', commands='cancel')
-@dp.message_handler(Text(equals=['Wishlist', 'Random Book', 'Search','Remove book from wishlist'], ignore_case=True), state='*')
+@dp.message_handler(Text(equals=['Wishlist', 'Random Book', 'Search', 'Remove book from wishlist'], ignore_case=True),
+                    state='*')
 async def cancel_handler(message: types.Message, state: FSMContext):
     current_state = await state.get_state()
     if current_state is None:
@@ -186,8 +207,8 @@ async def answer_author(message: types.Message, state: FSMContext):
     await message.answer_chat_action('typing')
     msg_text = message.text
     result = author_search(msg_text, message.message_id, message.chat.id)
-    mas = []
     if result is True:
+        mas = []
         util_id = BotDB.get_util_id(message.message_id)
         bot_message = await bot.send_message(message.chat.id,
                                              make_message_authors(mas, message.message_id, message.chat.id).strip(),

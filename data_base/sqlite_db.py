@@ -12,9 +12,9 @@ class BotDB:
         result = self.cursor.execute("SELECT `id` FROM `users` WHERE `id` = ?", (user_id,))
         return bool(len(result.fetchall()))
 
-    def add_user(self, user_id, user_name, search_status):
-        self.cursor.execute("INSERT INTO `users` (`id`,`user_name`,`search_status`) VALUES (?,?,?)",
-                            (user_id, user_name, search_status))
+    def add_user(self, user_id, user_name, search_status, lang):
+        self.cursor.execute("INSERT INTO `users` (`id`,`user_name`,`search_status`,`language`) VALUES (?,?,?,?)",
+                            (user_id, user_name, search_status, lang))
         return self.conn.commit()
 
     def get_user_status(self, user_id):
@@ -23,6 +23,14 @@ class BotDB:
 
     def update_status(self, status, user_id):
         self.cursor.execute("UPDATE `users` SET `search_status` = ? WHERE `id` = ?", (status, user_id))
+        return self.conn.commit()
+
+    def get_user_lang(self, user_id):
+        result = self.cursor.execute("SELECT `language` FROM `users` WHERE `id` = ?", (user_id,))
+        return result.fetchone()[0]
+
+    def update_lang(self, status, user_id):
+        self.cursor.execute("UPDATE `users` SET `language` = ? WHERE `id` = ?", (status, user_id))
         return self.conn.commit()
 
     # UTIL_TABLE

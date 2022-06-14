@@ -13,10 +13,15 @@ headers = {
 
 
 # Random Book
-def get_random_book_from_file():
-    random_book = random.randint(0, 98)
+def get_random_book_from_file(lang):
+    if lang == 'ru':
+        random_book = random.randint(0, 98)
+        file_path = 'json/top_books.json'
+    else:
+        random_book = random.randint(0, 117)
+        file_path = 'json/top_books_ua.json'
     try:
-        with open('json/top_books.json') as f:
+        with open(file_path) as f:
             data = json.loads(f.read())
         book_id = data[random_book]['id']
         title = data[random_book]['title']
