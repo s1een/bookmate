@@ -15,9 +15,12 @@ from parser import *
 @dp.message_handler(commands=['start'])
 async def process_start_command(message: types.Message):
     await message.answer_chat_action('choose_sticker')
+    li = ['😅', '😒', '😌', '👍', '😝', '😱', '😍', '❤', '🇺🇦', '😂', '☺', '😜', '😘', '😊', '😉', '😀',
+          '💙', '💛', '😎', '😵', '‍🤯']
+    random.shuffle(li)
     if not BotDB.user_exist(message.from_user.id):
-        BotDB.add_user(message.from_user.id, message.from_user.first_name, 'choice', 'ru')
-    await message.answer(f"Hello, {message.from_user.get_mention(as_html=True)} 👋!",
+        BotDB.add_user(message.from_user.id, message.from_user.first_name, 'choice', 'ua')
+    await message.answer(f"Hello, {message.from_user.get_mention(as_html=True)} {li[0]}!",
                          parse_mode=types.ParseMode.HTML, reply_markup=main_keyboard())
 
 
@@ -34,8 +37,21 @@ async def process_help_command(message: types.Message):
                '/series - series search mode.',
                '/rbook - random book.',
                '/mybooks - wishlist.',
-               '/rmybooks - delete from wishlist.', sep='\n')
+               '/region - get current region.',
+               '/ua - change region to Ukraine.',
+               '/ru - change region to Russia.', sep='\n')
     await message.answer(msg, parse_mode=ParseMode.MARKDOWN)
+
+
+# region
+@dp.message_handler(commands=['region'])
+async def process_choice_command(message: types.Message):
+    lang = BotDB.get_user_lang(message.chat.id)
+    await message.delete()
+    if (lang == 'ua'):
+        await message.answer('Your search region - Ukraine. 💙💛')
+    else:
+        await message.answer('Your search region - Russia. 🤍💙🤍')
 
 
 # lang commands
@@ -43,7 +59,7 @@ async def process_help_command(message: types.Message):
 async def process_choice_command(message: types.Message):
     BotDB.update_lang('ua', message.chat.id)
     await message.delete()
-    await message.answer('Ua language set.')
+    await message.answer('Search region - Ukraine. 💙💛')
 
 
 # lang commands
@@ -51,7 +67,7 @@ async def process_choice_command(message: types.Message):
 async def process_choice_command(message: types.Message):
     BotDB.update_lang('ru', message.chat.id)
     await message.delete()
-    await message.answer('Ru language set.')
+    await message.answer('Search region - Russia.')
 
 
 # Get a Random Book from Top 100
@@ -197,7 +213,7 @@ async def answer_book(message: types.Message, state: FSMContext):
         mas = []
         util_id = BotDB.get_util_id(message.message_id)
         bot_message = await bot.send_message(message.chat.id,
-                                             make_message_book(mas, message.message_id, message.chat.id, False).strip(),
+                                             make_message_book(mas, message.message_id, message.chat.id, False),
                                              reply_markup=create_inline(mas[0], 'book'))
         BotDB.update_util_message_id(util_id, bot_message.message_id)
     else:
@@ -232,6 +248,7 @@ async def answer_author(message: types.Message, state: FSMContext):
 async def answer_series(message: types.Message, state: FSMContext):
     await message.answer_chat_action('typing')
     mas = []
+    BotDB.update_lang('ru', message.chat.id)
     result = get_series_from_file(message.message_id, mas)
     if result is not None:
         util_id = BotDB.get_util_id(message.message_id)

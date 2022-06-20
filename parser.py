@@ -127,29 +127,36 @@ def author_search_ua(name, message_id, chat_id):
     if query.status_code == 200:
         result = query.content
         soup = BeautifulSoup(result, 'html.parser')
-        no_result = soup.find('div', class_='search-result no-result')
-        if no_result is not None:
+        no_result = soup.find('div', class_='block-content').find('li')
+        if no_result is None:
             return False
-        tmp = soup.find('div', class_='block-content').find('span', class_='amount').get_text()
-        authors_count = int(del_bounds(tmp))
-        count = 11
-        if authors_count < 11:
-            count = authors_count
-        if count == 1:
-            count = 2
         BotDB.add_util_data(message_id)
         util_id = BotDB.get_util_id(message_id)
-        author_info = soup.find_all('div', class_='caption')
-        for i in range(1, count):
+        author_info = soup.find('div',class_='unit__content').find_all('div', class_='caption')
+        if len(author_info) < 10:
+            count = len(author_info)
+        else:
+            count = 10
+        # for i in range(0, count):
+        i = 0
+        while True:
             author_link = author_info[i].find('a', class_='product-author').get('href')
             author_name = author_info[i].find('a', class_='product-author').get_text()
-            tmp_count = author_info[i].find('div', class_='actions').find('span').get_text()
+            try:
+                tmp_count = author_info[i].find('span', class_='amount').get_text()
+            except AttributeError:
+                count += 1
+                i += 1
+                continue
             books_count = int(del_bounds(tmp_count))
             if books_count > 20:
                 books_count = f'{20} книг'
             else:
                 books_count = f'{books_count} книг'
             BotDB.add_author_data(chat_id, util_id, author_name, books_count, author_link)
+            i += 1
+            if i >= count:
+                break
         return True
     else:
         logging.warning(f'Status Code: {query.status_code}')
@@ -252,21 +259,17 @@ def book_search_ua(title, message_id, chat_id):
             return False
         # page books count
         items = soup.find_all('li', class_='item last')
-        count_page = len(items)
-        q = int(count_page / 10)
-        for i in range(0, q):
-            for j in range(0, 10):
-                if (i == q - 1):
-                    break
-                book_links_temp = items[j].find('a', class_='thumbnail product-image').get('href')
-                book_titles_temp = items[j].find('a', class_='product-name').find('div',
-                                                                                  class_='name').get_text().strip()
-                try:
-                    book_authors_temp = items[j].find('div', class_='product-author').get_text().strip()
-                except AttributeError:
-                    continue
-                BotDB.add_book_data(message_id, chat_id, util_id, book_titles_temp, book_authors_temp, book_links_temp)
-            return True
+        for j in range(0, len(items)):
+            book_links_temp = items[j].find('a', class_='thumbnail product-image').get('href')
+            book_titles_temp = items[j].find('a', class_='product-name').find('div',
+                                                                              class_='name').get_text().strip()
+            try:
+                book_authors_temp = items[j].find('div', class_='product-author').get_text().strip()
+            except AttributeError:
+                continue
+            BotDB.add_book_data(message_id, chat_id, util_id, book_titles_temp, book_authors_temp, book_links_temp)
+        return True
+
     else:
         logging.warning(f'Status Code: {query.status_code}')
         return False
