@@ -269,13 +269,12 @@ async def process_rm_command(message: types.Message):
 # Cats Command Handler
 @dp.message_handler(commands=['cats'])
 async def process_cats_command(message: types.Message):
-    caption = 'Вредина. 🖤'
     random_path = random.choice(cats)
     await message.answer_chat_action('choose_sticker')
     with open(random_path, "rb") as file:
         await bot.send_photo(message.from_user.id, file.read(),
-                             caption=caption,
-                             reply_to_message_id=message.message_id)
+                             parse_mode=types.ParseMode.HTML,
+                             caption='<a href="https://t.me/colderrr">Вредина.</a> 🖤')
 
 
 # Unknown Message Handler
